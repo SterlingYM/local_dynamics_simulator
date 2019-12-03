@@ -1,0 +1,4 @@
+#!/bin/bash
+pipenv run bokeh serve simulator.py&
+pipenv run python3 open_gui.py
+
