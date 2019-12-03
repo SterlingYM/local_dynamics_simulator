@@ -7,7 +7,6 @@ A simulator for the time evolution of scalar field disformally / conformally cou
 ### Quick instruction (full version of readme.md preparation in progress):
 ```$./install``` and then
 ```$./run```
-
 (do ```$chmod +x``` if needed)
 
 If the automatic run does not work:
