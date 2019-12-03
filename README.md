@@ -2,6 +2,7 @@
 A simulator for the time evolution of scalar field disformally / conformally coupled to matter. Compares the local dynamics with the global (cosmological) evolution.
 
 ### Dependencies
+- bash
 - pipenv (with python>=3.6)
 
 ### Quick instruction (full version of readme.md preparation in progress):
