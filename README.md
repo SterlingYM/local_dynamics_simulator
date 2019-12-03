@@ -5,9 +5,10 @@ A simulator for the time evolution of scalar field disformally / conformally cou
 - pipenv (with python>=3.6)
 
 ### Quick instruction (full version of readme.md preparation in progress):
-```$ ./install``` and then
+```$./install``` and then
 ```$./run```
-(do $ chmod +x if needed)
+
+(do ```$chmod +x``` if needed)
 
 If the automatic run does not work:
 ```$ bokeh serve --show simulation.py```
