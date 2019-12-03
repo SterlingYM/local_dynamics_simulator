@@ -5,7 +5,7 @@ A simulator for the time evolution of scalar field disformally / conformally cou
 - pipenv (with python>=3.6)
 
 ### Quick instruction (full version of readme.md preparation in progress):
-```$ ./install```
+```$ ./install``` and then
 ```$./run```
 (do $ chmod +x if needed)
 
