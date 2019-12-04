@@ -12,9 +12,14 @@ A simulator for the time evolution of scalar field disformally / conformally cou
 ```$./run```
 (do ```$chmod +x``` if needed)
 
+**IMPORTANT: closing server requires sudo password. This will be fixed as soon as possible.**
+
 If the automatic run does not work:
-```$bokeh serve --show simulation.py```
+```$pipenv shell``` and then ```$bokeh serve --show simulator.py```
 (opens the simulator in your web browser)
+
+Or:
+```$pipenv shell``` and then ```$bokeh serve simulator.py```, followed by ```$python3 open_gui.py``` on another terminal to open the gui (this method allows the user to manually close the server by ```ctrl+c``` without superuser permission)
 
 --------------------------
 ### Known issues
