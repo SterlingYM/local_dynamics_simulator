@@ -7,7 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from bokeh.plotting import figure, output_notebook, output_file, show
 from bokeh.layouts import column, row,layout
-from bokeh.models import Button,CustomJS,TextInput,RadioButtonGroup,ColumnDataSource,Legend,LegendItem
+from bokeh.models import Button,CustomJS,TextInput,RadioButtonGroup,\
+        ColumnDataSource,Legend,LegendItem,Toggle
 from bokeh.models.widgets import Tabs, Panel
 from bokeh.models.renderers import GlyphRenderer
 from bokeh.palettes import viridis
@@ -191,20 +192,27 @@ def simulate_fancy(source_phi,source_dot,C0,c_th,D0,d_th,ti,tf,dt,\
     # formatting
     #####################################
     ## TODO: make legends individual
-    ## legend_list_1 = []
-    ## legend_list_2 = []
-    ## for i in range(num_plot):
-    ##     legend_list_1.append(LegendItem(label=source_phi.data['labels'][i],\
-    ##        renderers=[r1],index=i))
-    ##     legend_list_2.append(LegendItem(label=source_dot.data['labels'][i],\
-    ##        renderers=[r2],index=i))
-    ## p1.add_layout(Legend(items=legend_list_1))
-    ## p2.add_layout(Legend(items=legend_list_2))
+    ##legend_list_1 = []
+    ##legend_list_2 = []
+    ##for i in range(num_plot):
+    ##    legend_list_1.append(LegendItem(label=source_phi.data['labels'][i],\
+    ##       renderers=[r1],index=i))
+    ##    legend_list_2.append(LegendItem(label=source_dot.data['labels'][i],\
+    ##       renderers=[r2],index=i))
+    ##p1.add_layout(Legend(items=legend_list_1),'right')
+    ##p2.add_layout(Legend(items=legend_list_2))
     #####################################
     p1.legend.click_policy="hide"
     p2.legend.click_policy="hide"
     p3.legend.click_policy="hide"
     p4.legend.click_policy="hide"
+    for p in [p1,p2,p3,p4]:
+        p.x_range.start = None
+        p.x_range.end   = None
+        p.y_range.start = None
+        p.y_range.end   = None
+
+
    
     print('Simulation Completed')
 
@@ -212,19 +220,22 @@ def simulate_fancy(source_phi,source_dot,C0,c_th,D0,d_th,ti,tf,dt,\
 def start_gui():
     #### internally called functions ####
     def generate_figs():
-        p1 = figure(plot_width=800,plot_height=350, title="phi", x_axis_label='r',x_axis_type='log')
-        p2 = figure(plot_width=800,plot_height=350, title="dot", x_axis_label='r',x_axis_type='log')
-        p3 = figure(plot_width=800,plot_height=350, title="phi Local / Global", x_axis_label='t')
-        p4 = figure(plot_width=800,plot_height=350, title="dot Local / Global", x_axis_label='t') 
+        p1 = figure(plot_width=1200,plot_height=900, title="phi", x_axis_label='r',x_axis_type='log')
+        p2 = figure(plot_width=1200,plot_height=900, title="dot", x_axis_label='r',x_axis_type='log')
+        p3 = figure(plot_width=1200,plot_height=900, title="phi Local / Global", x_axis_label='t')
+        p4 = figure(plot_width=1200,plot_height=900, title="dot Local / Global", x_axis_label='t') 
+        p1.sizing_mode = 'stretch_both'
+        p2.sizing_mode = 'stretch_both'
+        p3.sizing_mode = 'stretch_both'
+        p4.sizing_mode = 'stretch_both'
         # TODO: make plot width responsive
         return p1,p2,p3,p4
-    def generate_tabs(p1,p2,p3,p4):
-        panel1 = Panel(child=p1,title='phi')
-        panel2 = Panel(child=p2,title='dot')
-        panel3 = Panel(child=p3,title='phi LG')
-        panel4 = Panel(child=p4,title='dot LG')
-        tabs   = Tabs(tabs=[panel1,panel2,panel3,panel4])
-        return tabs
+    def switch_plot():
+        plot_shown.children[0] = fig_list[plot_selector.active]
+    def refresh_plot(): 
+        # temporary bug fix: newly generated plot is broken without this
+        plot_shown.children[0] = dummy_fig
+        plot_shown.children[0] = fig_list[plot_selector.active]
     def start_click():
         print('Run clicked, simulating...')
         title = title_input.value
@@ -239,41 +250,68 @@ def start_gui():
         simulate_fancy(source_phi,source_dot,\
                 C0=C0,c_th=c_th,D0=D0,d_th=d_th,ti=ti,tf=tf,fig_list=fig_list,\
                 dt=dt,num_plot=N_plot,title=title,method='Euler')
+        refresh_plot()
     def clear_plot():
         source_phi.data = {k: [] for k in source_phi.data}
         source_dot.data = {k: [] for k in source_dot.data}
- 
+        refresh_plot()
+    def reset_fig():
+        return 0
+        # TODO: add a function to reset without restarting the window
+        #fig_list = generate_figs()
+        #p1,p2,p3,p4 = fig_list
+    def legend_showhide():
+        Labels = ['Hide Legend','Show Legend']
+        status = legend_switch.active
+        print(status)
+        legend_switch.label=Labels[status]
+        for p in fig_list:
+            p.legend.visible=False if status else True
     #### generate gui ####
     # figures (tabs)
-    fig_list  = generate_figs()
-    p1,p2,_,_ = fig_list
-    tabs = generate_tabs(*fig_list)
+    dummy_fig   = figure(plot_width=1200,plot_height=900,sizing_mode='stretch_both')
+    fig_list    = generate_figs()
+    p1,p2,p3,p4 = fig_list
+    plot_shown  = row(children=[p1],sizing_mode='stretch_both')
     # data for phi & dot
-    source_phi = ColumnDataSource(data=dict(x=[], y=[], labels=[], color=[]))
-    source_dot = ColumnDataSource(data=dict(x=[], y=[], labels=[], color=[]))
+    source_phi  = ColumnDataSource(data=dict(x=[], y=[], labels=[], color=[]))
+    source_dot  = ColumnDataSource(data=dict(x=[], y=[], labels=[], color=[]))
     # User inputs
-    title_input = TextInput(value="Title",title="Title",sizing_mode='stretch_both')
-    C0_input   = TextInput(value="1e-30",title="C0",sizing_mode='stretch_both')
-    D0_input   = TextInput(value="0",title="D0",sizing_mode='stretch_both')
-    c_th_input = TextInput(value="1",title="c_th",sizing_mode='stretch_both')
-    d_th_input = TextInput(value="0",title="d_th",sizing_mode='stretch_both')
-    ti_input   = TextInput(value="0",title="ti",sizing_mode='stretch_both')
-    tf_input   = TextInput(value="1",title="tf",sizing_mode='stretch_both')
-    dt_input   = TextInput(value="0.01",title="dt",sizing_mode='stretch_both')
+    title_input  = TextInput(value="Title",title="Title",sizing_mode='stretch_both')
+    C0_input     = TextInput(value="1e-30",title="C0",sizing_mode='stretch_both')
+    D0_input     = TextInput(value="0",title="D0",sizing_mode='stretch_both')
+    c_th_input   = TextInput(value="1",title="c_th",sizing_mode='stretch_both')
+    d_th_input   = TextInput(value="0",title="d_th",sizing_mode='stretch_both')
+    ti_input     = TextInput(value="0",title="ti",sizing_mode='stretch_both')
+    tf_input     = TextInput(value="1",title="tf",sizing_mode='stretch_both')
+    dt_input     = TextInput(value="0.01",title="dt",sizing_mode='stretch_both')
     N_plot_input = TextInput(value='10',title='Number of Plotted Lines',sizing_mode='stretch_both')
     # button, selector
     start_button  = Button(label='Run',button_type="success",sizing_mode='scale_both')
     clear_button  = Button(label='Clear',button_type='warning',sizing_mode='scale_both')
+    legend_switch = Toggle(label='Hide Legend',button_type='primary',sizing_mode='scale_both')
+    #reset_button  = Button(label='Reset All',button_type='warning',sizing_mode='scale_both')
     method_switch = RadioButtonGroup(labels=["RK4","Euler"],active=0,sizing_mode='scale_both')
+    plot_selector = RadioButtonGroup(\
+            labels=["Field (phi)","Velocity (dot)","Field Local/Global","Velocity Local/Global"],\
+            active=0,sizing_mode='scale_both')
+    # button behavior
     start_button.on_click(start_click)
     clear_button.on_click(clear_plot)
-    # show
-    curdoc().add_root(row(title_input))
-    curdoc().add_root(row([C0_input,c_th_input],sizing_mode='scale_width'))
-    curdoc().add_root(row([D0_input,d_th_input],sizing_mode='scale_width'))
-    curdoc().add_root(row([ti_input,tf_input],sizing_mode='scale_width'))
-    curdoc().add_root(row([dt_input,N_plot_input],sizing_mode='scale_width'))
-    curdoc().add_root(row([method_switch,clear_button,start_button],sizing_mode='scale_width'))
-    curdoc().add_root(row(tabs,sizing_mode='scale_width'))
-
+    legend_switch.on_click(lambda new: legend_showhide())
+    #reset_button.on_click(reset_fig)
+    plot_selector.on_change('active',lambda attr,old,new: switch_plot())
+    # layout
+    cols = column([
+        row(title_input,sizing_mode='scale_width'),
+        row([C0_input,c_th_input],sizing_mode='scale_width'),
+        row([D0_input,d_th_input],sizing_mode='scale_width'),
+        row([ti_input,tf_input],sizing_mode='scale_width'),
+        row([dt_input,N_plot_input],sizing_mode='scale_width'),
+        row([method_switch,clear_button,legend_switch,start_button],sizing_mode='scale_width'),
+        row([plot_selector],sizing_mode='scale_width'),
+        plot_shown],
+        sizing_mode='stretch_both')
+    curdoc().add_root(cols)
+    
 start_gui()

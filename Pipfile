@@ -1,0 +1,32 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+bokeh = "==1.4.0"
+kiwisolver = "==1.1.0"
+matplotlib = "==3.1.2"
+numpy = "==1.17.4"
+pyparsing = "==2.4.5"
+python-dateutil = "==2.8.1"
+pywebview = "==3.1"
+six = "==1.13.0"
+tornado = "==6.0.3"
+vext = "==0.7.3"
+Cycler = "==0.10.0"
+Jinja2 = "==2.10.3"
+MarkupSafe = "==1.1.1"
+Pillow = "==6.2.1"
+PyQt5 = "==5.13.2"
+PyQt5-sip = "==12.7.0"
+PyQtWebEngine = "==5.13.2"
+PyYAML = "==5.2"
+"ruamel.yaml" = "==0.16.5"
+"ruamel.yaml.clib" = "==0.2.0"
+"vext.gi" = "==0.7.0"
+
+[requires]
+python_version = "3.6"

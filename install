@@ -1,2 +1,2 @@
 #!/bin/bash
-pipenv install -r requirements.txt --python=3.6
+pipenv install -r requirements.txt
