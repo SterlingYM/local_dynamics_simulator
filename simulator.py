@@ -16,15 +16,15 @@ from bokeh.io import curdoc
 
 ########### parameters ##############
 # Scaling params
-resolution = 100
-x_axis = np.logspace(0,3,resolution)
+resolution = 50
+x_axis_unscaled = np.logspace(0,5,resolution)
 
 # Matter params
+# TODO: check units
 R_mass = 5e0
 M      = 1e30
 rho_1  = 4*M/(R_mass**3 * np.sqrt(np.pi))
 rho_0 = 1
-rho = rho_1 / np.sqrt(2 * np.pi * R_mass**2) * np.exp(-x_axis**2 / (2* R_mass**2)) + rho_0
 
 # Initial Field params
 phi_0 = 0 #0.1
@@ -39,9 +39,10 @@ num_legend = 10
 
 
 ############ constants #############
-SOL = 3.0 * 10**8
-G   = 6.67 * 10**-11
-R_s = 2 * G * rho_1 / SOL**2
+# TODO: check if these units are correct
+SOL = 3e7#3.0 * 10**8 #TODO: change to 1
+G   = 6e-10#6.67 * 10**-11
+R_s = 5#2 * G * rho_1 / SOL**2
 L_0 = SOL / np.sqrt(G*rho_0)
 eps = R_s / L_0
 
@@ -56,11 +57,15 @@ def calc_D(phi,D0,d_th):
 
 
 ############ Rescaled Quantities ############
+# TODO: check the scale
 def r_tilde(r):
     return r / R_s
 
 def t_tilde(t):
     return t* SOL / R_s
+
+def t_tilde_2_unscaled(t_tilde):
+    return t_tilde * R_s / SOL
 
 def rho_tilde(rho):
     return rho / rho_0
@@ -68,13 +73,21 @@ def rho_tilde(rho):
 def D_tilde(phi,D0,d_th):
     return calc_D(phi,D0,d_th) / (L_0**2)
 
+x_axis = r_tilde(x_axis_unscaled) # dummy container, will be initialized in return_val()
+rho = rho_1 / np.sqrt(2 * np.pi * R_mass**2) * np.exp(-x_axis**2 / (2* R_mass**2)) + rho_0
+
 
 ############ Rescaled Field Equation ############
-def calc_grad(phi):
-    return np.gradient(phi,x_axis)
+def calc_grad(phi,x_axis):
+    # TODO: is there any better method?
+    grad = np.gradient(phi,x_axis,edge_order=2)
+    grad[0] = 0
+    return grad
 
-def calc_grad2(phi):
-    return np.gradient(calc_grad(phi),x_axis)
+def calc_grad2(phi,x_axis):
+    grad2 = np.gradient(calc_grad(phi,x_axis),x_axis,edge_order=2) 
+    grad2[0] = 0
+    return grad2
 # TODO: add the boundary condition
 
 def return_val(y,eqn_params):
@@ -85,15 +98,27 @@ def return_val(y,eqn_params):
     # rescale
     C = calc_C(phi,C0,c_th)
     D = D_tilde(phi,D0,d_th)
-    grad = calc_grad(phi)
-    grad2 = calc_grad2(phi)
+    grad = calc_grad(phi,x_axis)
+    grad2 = calc_grad2(phi,x_axis)
+    # TODO: Is C' = dC(phi)/dphi? Or is C' = dC(phi)/dphi * dphi/dx? or is C' = dC(x)/dx?
     C_grad = c_th * C
     D_grad = d_th * D
+    # TODO: check rho (E or J?)
+    rho_E  = rho * np.sqrt(1-D*(dot**2 - grad**2))
+    #C_grad = c_th * C * grad
+    #D_grad = d_th * D * grad
+    #C_grad = calc_grad(C,x_axis)
+    #D_grad = calc_grad(D,x_axis)
+
 
     # equation quantities
     Q1 = (grad2 + (2/x_axis)*grad) * (C - (D/eps**2) * (dot**2 - grad**2))
-    Q2 = rho_tilde(rho) * (eps**2*C_grad/2 + (c_th*D - D_grad/2)*dot**2)
-    Q3 = C - (D/eps**2) * (dot**2 - grad**2) + D*rho
+    #Q2 = rho_tilde(rho) * (eps**2*C_grad/2 + ((C_grad/C)*D - D_grad/2)*dot**2)
+    Q2 = rho_tilde(rho_E) * (eps**2*C_grad/2 + ((c_th)*D - D_grad/2)*dot**2)
+    if (C0==0 and D0==0):
+        Q3=1
+    else:
+        Q3 = C - (D/eps**2) * (dot**2 - grad**2) + D*rho_tilde(rho_E)
 
     # return values
     dot = dot
@@ -177,11 +202,14 @@ def simulate_fancy(source_phi,source_dot,C0,c_th,D0,d_th,ti,tf,dt,\
         val = [phi_new,dot_new]
     
     # LG plot
+    # TODO: change this to the ColumnDataSource so that all-reset function can be added
     for j in range(len(phi_LG)):
         r,g,b,_ = 255*np.array(plt_cm(j/len(phi_LG)))
         cm_LG.append("#%02x%02x%02x" % (int(r), int(g), int(b)))
-    p3.circle(t,phi_LG,size=3,color=cm_LG,legend_label=title)
-    p4.circle(t,dot_LG,size=3,color=cm_LG,legend_label=title)
+    p3.line(t,phi_LG)
+    p3.circle(t,phi_LG,size=1,color=cm_LG,legend_label=title)
+    p4.line(t,phi_LG)
+    p4.circle(t,dot_LG,size=1,color=cm_LG,legend_label=title)
     
     # phi & dot plot
     r1 = p1.multi_line('x','y',legend_field='labels',line_color='color',\
@@ -283,8 +311,8 @@ def start_gui():
     c_th_input   = TextInput(value="1",title="c_th",sizing_mode='stretch_both')
     d_th_input   = TextInput(value="0",title="d_th",sizing_mode='stretch_both')
     ti_input     = TextInput(value="0",title="ti",sizing_mode='stretch_both')
-    tf_input     = TextInput(value="1",title="tf",sizing_mode='stretch_both')
-    dt_input     = TextInput(value="0.01",title="dt",sizing_mode='stretch_both')
+    tf_input     = TextInput(value="0.1",title="tf",sizing_mode='stretch_both')
+    dt_input     = TextInput(value="0.001",title="dt",sizing_mode='stretch_both')
     N_plot_input = TextInput(value='10',title='Number of Plotted Lines',sizing_mode='stretch_both')
     # button, selector
     start_button  = Button(label='Run',button_type="success",sizing_mode='scale_both')
