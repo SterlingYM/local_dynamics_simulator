@@ -16,8 +16,9 @@ from bokeh.io import curdoc
 
 ########### parameters ##############
 # Scaling params
-resolution = 50
-x_axis_unscaled = np.logspace(0,5,resolution)
+resolution = 100#50
+#x_axis_unscaled = np.linspace(0,100000,resolution
+x_axis_unscaled = np.logspace(0,3,resolution)
 
 # Matter params
 # TODO: check units
@@ -40,20 +41,20 @@ num_legend = 10
 
 ############ constants #############
 # TODO: check if these units are correct
-SOL = 3e7#3.0 * 10**8 #TODO: change to 1
-G   = 6e-10#6.67 * 10**-11
-R_s = 5#2 * G * rho_1 / SOL**2
-L_0 = SOL / np.sqrt(G*rho_0)
-eps = R_s / L_0
+SOL = 1 #3e7#3.0 * 10**8 #TODO: change to 1
+G   = 1 # 6e-10#6.67 * 10**-11
+R_s = 1 #2 * G * rho_1 / SOL**2
+L_0 = 1 #SOL / np.sqrt(G*rho_0)
+eps = 1 #R_s / L_0
 
 
 
 ############ coupling model #############
 def calc_C(phi,C0,c_th):
-    return C0 * np.exp(c_th*phi)
+    return C0 * np.exp(c_th*phi/M)
 
 def calc_D(phi,D0,d_th):
-    return D0 * np.exp(d_th*phi)
+    return D0 * np.exp(d_th*phi/M)
 
 
 ############ Rescaled Quantities ############
@@ -62,7 +63,7 @@ def r_tilde(r):
     return r / R_s
 
 def t_tilde(t):
-    return t* SOL / R_s
+    return t * SOL / R_s
 
 def t_tilde_2_unscaled(t_tilde):
     return t_tilde * R_s / SOL
@@ -71,24 +72,21 @@ def rho_tilde(rho):
     return rho / rho_0
 
 def D_tilde(phi,D0,d_th):
-    return calc_D(phi,D0,d_th) / (L_0**2)
+    return calc_D(phi,D0,d_th) #/ (L_0**2)
 
 x_axis = r_tilde(x_axis_unscaled) # dummy container, will be initialized in return_val()
-rho = rho_1 / np.sqrt(2 * np.pi * R_mass**2) * np.exp(-x_axis**2 / (2* R_mass**2)) + rho_0
+#rho = rho_1 / np.sqrt(2 * np.pi * R_mass**2) * np.exp(-x_axis**2 / (2* R_mass**2)) + rho_0
+rho = rho_1 * np.exp(-(x_axis/R_mass)**2) + rho_0
 
 
 ############ Rescaled Field Equation ############
 def calc_grad(phi,x_axis):
-    # TODO: is there any better method?
     grad = np.gradient(phi,x_axis,edge_order=2)
-    grad[0] = 0
     return grad
 
 def calc_grad2(phi,x_axis):
     grad2 = np.gradient(calc_grad(phi,x_axis),x_axis,edge_order=2) 
-    grad2[0] = 0
     return grad2
-# TODO: add the boundary condition
 
 def return_val(y,eqn_params):
     # unpacking
@@ -100,21 +98,25 @@ def return_val(y,eqn_params):
     D = D_tilde(phi,D0,d_th)
     grad = calc_grad(phi,x_axis)
     grad2 = calc_grad2(phi,x_axis)
-    # TODO: Is C' = dC(phi)/dphi? Or is C' = dC(phi)/dphi * dphi/dx? or is C' = dC(x)/dx?
     C_grad = c_th * C
     D_grad = d_th * D
-    # TODO: check rho (E or J?)
-    rho_E  = rho * np.sqrt(1-D*(dot**2 - grad**2))
-    #C_grad = c_th * C * grad
-    #D_grad = d_th * D * grad
-    #C_grad = calc_grad(C,x_axis)
-    #D_grad = calc_grad(D,x_axis)
+    rho_E = []
 
+    #######################################
+    # TODO: how can we handle negative case?
+    for i in range(len(phi)):
+        if (D[i]/C[i])*(dot[i]**2 - grad[i]**2) > 1:
+            rho_E.append(0)
+        else:
+            rho_E.append(rho[i] * np.sqrt(1-(D[i]/C[i])*(dot[i]**2 - grad[i]**2)) * C[i]**3)
+    rho_E = np.array(rho_E)
+    #######################################
+    
+    lap = (grad2 + (2/x_axis)*grad)
 
     # equation quantities
-    Q1 = (grad2 + (2/x_axis)*grad) * (C - (D/eps**2) * (dot**2 - grad**2))
-    #Q2 = rho_tilde(rho) * (eps**2*C_grad/2 + ((C_grad/C)*D - D_grad/2)*dot**2)
-    Q2 = rho_tilde(rho_E) * (eps**2*C_grad/2 + ((c_th)*D - D_grad/2)*dot**2)
+    Q1 = lap * (C - (D/eps**2) * (dot**2 - grad**2))
+    Q2 = rho_tilde(rho_E) * (eps**2*C_grad/2 + ((C_grad/C)*D - D_grad/2)*(dot**2))
     if (C0==0 and D0==0):
         Q3=1
     else:
@@ -135,11 +137,17 @@ def get_next_Euler(val_old,dt,eqn_params):
 
 def get_next_RK4(val_old,dt,eqn_params):
     val_old = np.array(val_old)
-    k1 = dt * return_val(val_old     ,eqn_params)
-    k2 = dt * return_val(val_old+k1/2,eqn_params)
-    k3 = dt * return_val(val_old+k2/2,eqn_params)
-    k4 = dt * return_val(val_old+k3  ,eqn_params)
-    return val_old + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
+    
+    k1 = val_old + 0.5*dt*return_val(val_old,eqn_params)
+    k2 = val_old + 0.5*dt*return_val(k1)
+    k3 = val_old +     dt*return_val(k2)
+    k3 =               dt*return_val(k3)
+    return (k1 + 2*k2 + k3)/3 + k4/6 - val_old
+    #k1 = dt * return_val(val_old     ,eqn_params)
+    #k2 = dt * return_val(val_old+k1/2,eqn_params)
+    #k3 = dt * return_val(val_old+k2/2,eqn_params)
+    #k4 = dt * return_val(val_old+k3  ,eqn_params)
+    #return val_old + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
 
 ############ plotter ###############
 def simulate_fancy(source_phi,source_dot,C0,c_th,D0,d_th,ti,tf,dt,\
@@ -306,12 +314,12 @@ def start_gui():
     source_dot  = ColumnDataSource(data=dict(x=[], y=[], labels=[], color=[]))
     # User inputs
     title_input  = TextInput(value="Title",title="Title",sizing_mode='stretch_both')
-    C0_input     = TextInput(value="1e-30",title="C0",sizing_mode='stretch_both')
+    C0_input     = TextInput(value="1e-3",title="C0",sizing_mode='stretch_both')
     D0_input     = TextInput(value="0",title="D0",sizing_mode='stretch_both')
     c_th_input   = TextInput(value="1",title="c_th",sizing_mode='stretch_both')
     d_th_input   = TextInput(value="0",title="d_th",sizing_mode='stretch_both')
     ti_input     = TextInput(value="0",title="ti",sizing_mode='stretch_both')
-    tf_input     = TextInput(value="0.1",title="tf",sizing_mode='stretch_both')
+    tf_input     = TextInput(value="20",title="tf",sizing_mode='stretch_both')
     dt_input     = TextInput(value="0.001",title="dt",sizing_mode='stretch_both')
     N_plot_input = TextInput(value='10',title='Number of Plotted Lines',sizing_mode='stretch_both')
     # button, selector
