@@ -1,5 +1,12 @@
 # local_dynamics_simulator
 A simulator for the time evolution of scalar field disformally / conformally coupled to matter. Compares the local dynamics with the global evolution.
+For more description of the theory and analysis, see the following:
+
+- [Local Dynamics of Cosmological Scalar Fields (Bettoni,Heisenberg,Koivisto,Murakami,and Zumalacarregui: in prep)]() and
+- [Screening Modifications of Gravity through Disformally Coupled Fields (Koivisto,Mota, and Zumalacarregui)](https://arxiv.org/abs/1205.3167).
+
+------------------------------
+![GUI image](misc/readme_image.png)
 
 ### Dependencies
 - bash
