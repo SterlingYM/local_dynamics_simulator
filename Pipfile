@@ -10,6 +10,8 @@ bokeh = "==1.4.0"
 kiwisolver = "==1.1.0"
 matplotlib = "==3.1.2"
 numpy = "==1.17.4"
+scipy
+astropy
 pyparsing = "==2.4.5"
 python-dateutil = "==2.8.1"
 pywebview = "==3.1"
